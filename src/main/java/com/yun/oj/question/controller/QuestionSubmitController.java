@@ -1,10 +1,16 @@
 package com.yun.oj.question.controller;
-import cn.hutool.json.JSONUtil;
+
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.yun.oj.question.manager.JudgeManager;
 import com.yun.oj.question.service.QuestionSubmitService;
+import com.yun.oj.service.client.service.JudgeFeignClient;
+import com.yun.oj.service.client.service.UserFeignClient;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeanUtils;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.context.annotation.Lazy;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RestController;
 import yun.oj.common.common.BaseResponse;
 import yun.oj.common.common.ErrorCode;
 import yun.oj.common.common.ResultUtils;
@@ -21,23 +27,18 @@ import javax.servlet.http.HttpServletRequest;
 
 /**
  * 问题接口
- *
-
  */
 @RestController
-@RequestMapping("/question_submit")
 @Slf4j
 public class QuestionSubmitController {
 
     @Resource
     private QuestionSubmitService questionSubmitService;
-
     @Resource
-    private UserService userService;
+    @Lazy
+    private UserFeignClient userFeignClient;
     @Resource
-    private JudgeService judgeService;
-
-    // region 增删改查
+    private JudgeManager judgeManager;
 
     /**
      * 提交
@@ -53,21 +54,21 @@ public class QuestionSubmitController {
         }
         QuestionSubmit questionSubmit = new QuestionSubmit();
         BeanUtils.copyProperties(questionSubmitAddRequest, questionSubmit);
-//        questionSubmit.setCode("public class Main {\n" +
-//                "    public static void main(String[] args) {\n" +
-//                "        int a = Integer.parseInt(args[0]);\n" +
-//                "        int b = Integer.parseInt(args[1]);\n" +
-//                "        System.out.println(a + b);\n" +
-//                "    }\n" +
-//                "}\n");
+        questionSubmit.setCode("public class Main {\n" +
+                "    public static void main(String[] args) {\n" +
+                "        int a = Integer.parseInt(args[0]);\n" +
+                "        int b = Integer.parseInt(args[1]);\n" +
+                "        System.out.println(a + b);\n" +
+                "    }\n" +
+                "}\n");
         questionSubmitService.validQuestionSubmit(questionSubmit, true);
-        User loginUser = userService.getLoginUser(request);
+        User loginUser = userFeignClient.getLoginUser(request);
         questionSubmit.setUserId(loginUser.getId());
         questionSubmit.setStatus(0);
         boolean save = questionSubmitService.save(questionSubmit);
         ThrowUtils.throwIf(!save, ErrorCode.OPERATION_ERROR);
-        QuestionSubmit questionSubmitResult = judgeService.judge(questionSubmit);
-        QuestionSubmitVO questionSubmitVO = questionSubmitService.getQuestionSubmitVO(questionSubmitResult, request);
+        judgeManager.judge(String.valueOf(questionSubmit.getId()));
+        QuestionSubmitVO questionSubmitVO = questionSubmitService.getQuestionSubmitVO(questionSubmit, request);
         return ResultUtils.success(questionSubmitVO);
     }
 
@@ -79,9 +80,9 @@ public class QuestionSubmitController {
      * @param request
      * @return
      */
-    @PostMapping("/list/page/vo")
+    @PostMapping("/question_submit/list/page/vo")
     public BaseResponse<Page<QuestionSubmitVO>> listQuestionSubmitVOByPage(@RequestBody QuestionSubmitQueryRequest questionSubmitQueryRequest,
-                                                               HttpServletRequest request) {
+                                                                           HttpServletRequest request) {
         long current = questionSubmitQueryRequest.getCurrent();
         long size = questionSubmitQueryRequest.getPageSize();
         // 限制爬虫

@@ -7,7 +7,9 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.yun.oj.question.mapper.QuestionMapper;
 import com.yun.oj.question.service.QuestionService;
+import com.yun.oj.service.client.service.UserFeignClient;
 import org.apache.commons.lang3.StringUtils;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 import yun.oj.common.common.ErrorCode;
 import yun.oj.common.constant.CommonConstant;
@@ -34,7 +36,8 @@ import java.util.stream.Collectors;
 public class QuestionServiceImpl extends ServiceImpl<QuestionMapper, Question>
         implements QuestionService {
     @Resource
-    private UserService userService;
+    @Lazy
+    private UserFeignClient userFeignClient;
 
     @Override
     public void validQuestion(Question question, boolean b) {
@@ -76,9 +79,9 @@ public class QuestionServiceImpl extends ServiceImpl<QuestionMapper, Question>
         Long userId = question.getUserId();
         User user = null;
         if (userId != null && userId > 0) {
-            user = userService.getById(userId);
+            user = userFeignClient.getById(userId);
         }
-        UserVO userVO = userService.getUserVO(user);
+        UserVO userVO = userFeignClient.getUserVO(user);
         questionVO.setUserVO(userVO);
         return questionVO;
     }

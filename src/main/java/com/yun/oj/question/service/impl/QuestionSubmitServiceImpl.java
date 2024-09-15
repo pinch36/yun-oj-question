@@ -26,8 +26,6 @@ import javax.servlet.http.HttpServletRequest;
 public class QuestionSubmitServiceImpl extends ServiceImpl<QuestionSubmitMapper, QuestionSubmit>
     implements QuestionSubmitService {
     @Resource
-    private UserService userService;
-    @Resource
     private QuestionService questionService;
 
     @Override
